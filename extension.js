@@ -6,7 +6,7 @@
             this.loader = "Fabric";
             this.loaded = false;
             this.loading = false;
-            this.loadingVisible = false;
+            this.loadingScreenVisible = false;
             this.progress = 0;
             this.loadingStatus = "Silicon ready";
             this.status = "Silicon ready";
@@ -142,7 +142,7 @@
             this.loader = loader;
             this.loaded = false;
             this.loading = true;
-            this.loadingVisible = true;
+            this.loadingScreenVisible = true;
             this.error = "";
             this.progress = 0;
             this.startedAt = Date.now();
@@ -168,7 +168,7 @@
                     this.projectName = "Gandi Project";
                     this._setStage(100, loader + " loaded successfully");
                     setTimeout(() => {
-                        if (token === this.bootToken) this.loadingVisible = false;
+                        if (token === this.bootToken) this.loadingScreenVisible = false;
                     }, 900);
                     return;
                 }
@@ -190,7 +190,7 @@
         unloadProject() {
             this.bootToken++;
             this.loading = false;
-            this.loadingVisible = false;
+            this.loadingScreenVisible = false;
             this.loaded = false;
             this.progress = 0;
             this.projectName = "";
@@ -201,16 +201,16 @@
             this.bootToken++;
             this.loading = false;
             this.loaded = false;
-            this.loadingVisible = true;
+            this.loadingScreenVisible = true;
             this.error = message;
             this.status = "Silicon error";
             this.loadingStatus = "ERROR: " + message;
             this._log("ERROR: " + message);
         }
 
-        showLoading() { this.loadingVisible = true; }
-        hideLoading() { this.loadingVisible = false; }
-        loadingVisible() { return this.loadingVisible; }
+        showLoading() { this.loadingScreenVisible = true; }
+        hideLoading() { this.loadingScreenVisible = false; }
+        isLoadingScreenVisible() { return this.loadingScreenVisible; }
         getProgress() { return Math.round(this.progress); }
         getLoadingStatus() { return this.loadingStatus; }
         setLoadingStatus(args) { this.loadingStatus = String(args.TEXT); this.status = this.loadingStatus; this._log(this.loadingStatus); }
@@ -291,7 +291,7 @@
             this.loader = "Fabric";
             this.loaded = false;
             this.loading = false;
-            this.loadingVisible = false;
+            this.loadingScreenVisible = false;
             this.progress = 0;
             this.loadingStatus = "Silicon ready";
             this.status = "Silicon ready";
