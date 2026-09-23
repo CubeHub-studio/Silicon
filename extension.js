@@ -179,13 +179,19 @@
 
         loadProject(args) {
             const loader = String(args.LOADER || this.loader);
+
             if (!this.loaderSupported({LOADER: loader})) {
                 this._fail("Unsupported loader: " + loader);
                 return;
             }
 
+            /*
+             * Remote Gandi extensions must not hold a project thread while
+             * waiting on timers. The old loader used a chain of setTimeout()
+             * calls, which could leave Gandi's VM thread in a frozen state.
+             * Silicon now performs the boot state transition synchronously.
+             */
             this.bootToken++;
-            const token = this.bootToken;
             this.loader = loader;
             this.loaded = false;
             this.loading = true;
@@ -194,38 +200,27 @@
             this.error = "";
             this.progress = 0;
             this.startedAt = Date.now();
-            this._setStage(0, "Silicon Bootloader starting...");
 
             const stages = [
-                [350,5,"Initializing Silicon core"],
-                [500,10,"Detecting " + loader + " Loader"],
-                ...this._loaderMessages(loader).map(x => [450,x[1],x[0]]),
-                [500,68,"Loading project metadata"],
-                [450,76,"Initializing project modules"],
-                [450,86,"Starting Silicon runtime"],
-                [450,94,"Finalizing startup"],
-                [400,100,"Silicon startup complete"]
+                [5, "Initializing Silicon core"],
+                [10, "Detecting " + loader + " Loader"],
+                ...this._loaderMessages(loader),
+                [68, "Loading project metadata"],
+                [76, "Initializing project modules"],
+                [86, "Starting Silicon runtime"],
+                [94, "Finalizing startup"],
+                [100, "Silicon startup complete"]
             ];
 
-            let index = 0;
-            const next = () => {
-                if (token !== this.bootToken) return;
-                if (index >= stages.length) {
-                    this.loading = false;
-                    this.loaded = true;
-                    this.projectName = this.projectName || "Gandi Project";
-                    this._setStage(100, loader + " loaded successfully");
-                    this.fireEvent({EVENT:"ready"});
-                    setTimeout(() => {
-                        if (token === this.bootToken && !this.error) this.loadingScreenVisible = false;
-                    }, 900);
-                    return;
-                }
-                const stage = stages[index++];
-                this._setStage(stage[1], stage[2]);
-                setTimeout(next, stage[0]);
-            };
-            next();
+            for (const stage of stages) {
+                this._setStage(stage[0], stage[1]);
+            }
+
+            this.loading = false;
+            this.loaded = true;
+            this.projectName = this.projectName || "Gandi Project";
+            this._setStage(100, loader + " loaded successfully");
+            this.fireEvent({EVENT: "ready"});
         }
 
         reloadProject() {
