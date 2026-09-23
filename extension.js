@@ -50,7 +50,7 @@
                 color2: "#3266c7",
                 color3: "#244c99",
                 blocks: [
-                    "LOADER",
+                    "---LOADER",
                     { opcode: "loadProject", blockType: Scratch.BlockType.COMMAND, text: "load project with [LOADER]", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
                     { opcode: "setLoader", blockType: Scratch.BlockType.COMMAND, text: "set loader to [LOADER]", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
                     { opcode: "reloadProject", blockType: Scratch.BlockType.COMMAND, text: "reload project" },
@@ -60,14 +60,14 @@
                     { opcode: "loaderSupported", blockType: Scratch.BlockType.BOOLEAN, text: "[LOADER] supported?", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
                     { opcode: "getLoaderVersion", blockType: Scratch.BlockType.REPORTER, text: "Silicon loader version" },
 
-                    "LOADER CONFIGURATION",
+                    "---LOADER CONFIGURATION",
                     { opcode: "setLoaderConfig", blockType: Scratch.BlockType.COMMAND, text: "set loader config [KEY] to [VALUE]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "gandi" } } },
                     { opcode: "getLoaderConfig", blockType: Scratch.BlockType.REPORTER, text: "loader config [KEY]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" } } },
                     { opcode: "loaderConfigExists", blockType: Scratch.BlockType.BOOLEAN, text: "loader config [KEY] exists?", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" } } },
                     { opcode: "clearLoaderConfig", blockType: Scratch.BlockType.COMMAND, text: "clear loader configuration" },
                     { opcode: "listLoaderConfig", blockType: Scratch.BlockType.REPORTER, text: "list loader configuration" },
 
-                    "LOADING SCREEN",
+                    "---LOADING SCREEN",
                     { opcode: "showLoading", blockType: Scratch.BlockType.COMMAND, text: "show Silicon loading screen" },
                     { opcode: "hideLoading", blockType: Scratch.BlockType.COMMAND, text: "hide Silicon loading screen" },
                     { opcode: "loadingVisible", blockType: Scratch.BlockType.BOOLEAN, text: "loading screen visible?" },
@@ -78,19 +78,20 @@
                     { opcode: "loadingConfigExists", blockType: Scratch.BlockType.BOOLEAN, text: "loading config [KEY] exists?", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "title" } } },
                     { opcode: "resetLoadingConfig", blockType: Scratch.BlockType.COMMAND, text: "reset Silicon loading config" },
                     { opcode: "loadingScreenData", blockType: Scratch.BlockType.REPORTER, text: "loading screen data" },
+                    { opcode: "loadingScreenFrame", blockType: Scratch.BlockType.REPORTER, text: "loading screen animation frame" },
                     { opcode: "setLoadingStatus", blockType: Scratch.BlockType.COMMAND, text: "set loading status to [TEXT]", arguments: { TEXT: { type: Scratch.ArgumentType.STRING, defaultValue: "Initializing..." } } },
                     { opcode: "getLoadingStatus", blockType: Scratch.BlockType.REPORTER, text: "loading status" },
                     { opcode: "setProgress", blockType: Scratch.BlockType.COMMAND, text: "set loading progress to [NUMBER] %", arguments: { NUMBER: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
                     { opcode: "getProgress", blockType: Scratch.BlockType.REPORTER, text: "loading progress" },
 
-                    "PROJECT CONFIGURATION",
+                    "---PROJECT CONFIGURATION",
                     { opcode: "setConfig", blockType: Scratch.BlockType.COMMAND, text: "set config [KEY] to [VALUE]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "normal" } } },
                     { opcode: "getConfig", blockType: Scratch.BlockType.REPORTER, text: "config [KEY]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" } } },
                     { opcode: "configExists", blockType: Scratch.BlockType.BOOLEAN, text: "config [KEY] exists?", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" } } },
                     { opcode: "clearConfig", blockType: Scratch.BlockType.COMMAND, text: "clear configuration" },
                     { opcode: "listConfig", blockType: Scratch.BlockType.REPORTER, text: "list configuration" },
 
-                    "MODULES",
+                    "---MODULES",
                     { opcode: "registerModule", blockType: Scratch.BlockType.COMMAND, text: "register module [NAME] version [VERSION]", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" }, VERSION: { type: Scratch.ArgumentType.STRING, defaultValue: "1.0.0" } } },
                     { opcode: "removeModule", blockType: Scratch.BlockType.COMMAND, text: "remove module [NAME]", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" } } },
                     { opcode: "moduleLoaded", blockType: Scratch.BlockType.BOOLEAN, text: "module [NAME] loaded?", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" } } },
@@ -99,14 +100,14 @@
                     { opcode: "moduleCount", blockType: Scratch.BlockType.REPORTER, text: "number of modules" },
                     { opcode: "listModules", blockType: Scratch.BlockType.REPORTER, text: "list modules" },
 
-                    "PROJECT METADATA",
+                    "---PROJECT METADATA",
                     { opcode: "getProjectName", blockType: Scratch.BlockType.REPORTER, text: "loaded project name" },
                     { opcode: "getProjectVersion", blockType: Scratch.BlockType.REPORTER, text: "project version" },
                     { opcode: "getProjectId", blockType: Scratch.BlockType.REPORTER, text: "project ID" },
                     { opcode: "setProjectMetadata", blockType: Scratch.BlockType.COMMAND, text: "set project [KEY] to [VALUE]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "name" }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "Gandi Project" } } },
                     { opcode: "getProjectMetadata", blockType: Scratch.BlockType.REPORTER, text: "project metadata [KEY]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "name" } } },
 
-                    "DEBUGGING & ERRORS",
+                    "---DEBUGGING & ERRORS",
                     { opcode: "enableDebug", blockType: Scratch.BlockType.COMMAND, text: "enable debug mode" },
                     { opcode: "disableDebug", blockType: Scratch.BlockType.COMMAND, text: "disable debug mode" },
                     { opcode: "debugMode", blockType: Scratch.BlockType.BOOLEAN, text: "debug mode?" },
@@ -114,7 +115,7 @@
                     { opcode: "clearError", blockType: Scratch.BlockType.COMMAND, text: "clear error" },
                     { opcode: "siliconLog", blockType: Scratch.BlockType.REPORTER, text: "Silicon log" },
 
-                    "RUNTIME & EVENTS",
+                    "---RUNTIME & EVENTS",
                     { opcode: "getStatus", blockType: Scratch.BlockType.REPORTER, text: "Silicon status" },
                     { opcode: "runtimeState", blockType: Scratch.BlockType.REPORTER, text: "runtime state" },
                     { opcode: "runtimeUptime", blockType: Scratch.BlockType.REPORTER, text: "runtime uptime" },
@@ -246,8 +247,14 @@
             this.fireEvent({EVENT:"unloaded"});
         }
 
-        showLoading() { this.loadingScreenVisible = true; }
-        hideLoading() { this.loadingScreenVisible = false; }
+        showLoading() {
+            this.loadingScreenMode = this.loadingScreenMode === "off" ? "builtin" : this.loadingScreenMode;
+            this.loadingScreenVisible = true;
+        }
+
+        hideLoading() {
+            this.loadingScreenVisible = false;
+        }
 
         isLoadingScreenVisible() {
             return this.loadingScreenVisible;
@@ -337,6 +344,10 @@
         }
 
         getProgress() { return Math.round(this.progress); }
+
+        loadingScreenFrame() {
+            return Math.floor(Date.now() / 120) % 12;
+        }
 
         setLoaderConfig(args) {
             const key = String(args.KEY || "").trim();
