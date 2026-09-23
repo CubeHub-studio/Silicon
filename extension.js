@@ -331,8 +331,7 @@
             const filled = Math.round((this.progress / 100) * barLength);
             const bar = "█".repeat(filled) + "░".repeat(barLength - filled);
             const lines = [];
-            if (c.logo) lines.push(String(c.logo));
-            if (c.title) lines.push(String(c.title));
+            lines.push("Silicon");
             if (c.subtitle) lines.push(String(c.subtitle));
             if (c.showLoader) lines.push("Loader: " + this.loader);
             if (c.showStatus) lines.push(String(this.loadingStatus));
