@@ -159,8 +159,17 @@
 
         _loaderMessages(loader) {
             return loader.toLowerCase() === "fabric"
-                ? [["Starting Fabric Loader",8],["Checking Fabric environment",18],["Loading Fabric API",30],["Resolving Fabric modules",44],["Initializing Fabric runtime",60]]
-                : [["Starting NeoVirus Loader",8],["Scanning NeoVirus environment",18],["Loading NeoVirus core",30],["Resolving NeoVirus modules",44],["Initializing NeoVirus runtime",60]];
+                ? [[8,"Starting Fabric Loader"],[18,"Checking Fabric environment"],[30,"Loading Fabric API"],[44,"Resolving Fabric modules"],[60,"Initializing Fabric runtime"]]
+                : [[8,"Starting NeoVirus Loader"],[18,"Scanning NeoVirus environment"],[30,"Loading NeoVirus core"],[44,"Resolving NeoVirus modules"],[60,"Initializing NeoVirus runtime"]];
+        }
+
+        loaderSupported(args) {
+            const loader = String(args && args.LOADER || "").trim().toLowerCase();
+            return loader === "fabric" || loader === "neovirus";
+        }
+
+        getLoaderVersion() {
+            return this.loaderVersion;
         }
 
         setLoader(args) {
