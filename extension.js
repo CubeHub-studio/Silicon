@@ -1,25 +1,58 @@
 (function (Scratch) {
     "use strict";
 
+    /*
+     * Silicon
+     * Gandi remote extension
+     *
+     * IMPORTANT:
+     * Normal Gandi remote extensions run in a sandbox and cannot directly
+     * access the VM/runtime or draw over the Stage. Silicon therefore owns
+     * the complete loading-screen state and configuration here, while a
+     * project can render that state however it wants.
+     */
+
     class Silicon {
         constructor() {
             this.loader = "Fabric";
             this.loaded = false;
             this.loading = false;
+
             this.loadingScreenVisible = false;
+            this.loadingScreenMode = "builtin";
+            this.loadingScreenConfig = {
+                title: "Silicon",
+                subtitle: "Booting project...",
+                logo: "S",
+                background: "#0b1020",
+                foreground: "#ffffff",
+                accent: "#4b8cff",
+                progress: "#4b8cff",
+                error: "#ff4b4b",
+                animation: "pulse",
+                showProgress: true,
+                showStatus: true,
+                showPercent: true,
+                showLoader: true,
+                showError: true
+            };
+
             this.progress = 0;
             this.loadingStatus = "Silicon ready";
             this.status = "Silicon ready";
             this.error = "";
+
             this.projectName = "Gandi Project";
             this.projectVersion = "1.0.0";
             this.projectId = "gandi-project";
-            this.loaderVersion = "1.0.0";
+            this.loaderVersion = "1.1.0";
+
             this.debug = false;
             this.modules = {};
             this.config = {};
             this.events = [];
-            this.lastEvent = "";
+            this.lastEventText = "";
+
             this.bootToken = 0;
             this.startedAt = 0;
         }
@@ -31,41 +64,136 @@
                 color1: "#4b8cff",
                 color2: "#3266c7",
                 color3: "#244c99",
+
                 blocks: [
-                    { opcode: "loadProject", blockType: Scratch.BlockType.COMMAND, text: "load project with [LOADER]", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
-                    { opcode: "setLoader", blockType: Scratch.BlockType.COMMAND, text: "set loader to [LOADER]", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
+                    // =========================
+                    // LOADER
+                    // =========================
+                    "---",
+                    { opcode: "loadProject", blockType: Scratch.BlockType.COMMAND, text: "load project with [LOADER]", arguments: {
+                        LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" }
+                    }},
+                    { opcode: "setLoader", blockType: Scratch.BlockType.COMMAND, text: "set loader to [LOADER]", arguments: {
+                        LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" }
+                    }},
                     { opcode: "reloadProject", blockType: Scratch.BlockType.COMMAND, text: "reload project" },
                     { opcode: "unloadProject", blockType: Scratch.BlockType.COMMAND, text: "unload project" },
+                    { opcode: "isLoaded", blockType: Scratch.BlockType.BOOLEAN, text: "project loaded?" },
+                    { opcode: "getLoader", blockType: Scratch.BlockType.REPORTER, text: "current loader" },
+                    { opcode: "loaderSupported", blockType: Scratch.BlockType.BOOLEAN, text: "[LOADER] supported?", arguments: {
+                        LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" }
+                    }},
+                    { opcode: "getLoaderVersion", blockType: Scratch.BlockType.REPORTER, text: "Silicon loader version" },
 
+                    // =========================
+                    // LOADER CONFIGURATION
+                    // =========================
+                    "---",
+                    { opcode: "setLoaderConfig", blockType: Scratch.BlockType.COMMAND, text: "set loader config [KEY] to [VALUE]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" },
+                        VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "gandi" }
+                    }},
+                    { opcode: "getLoaderConfig", blockType: Scratch.BlockType.REPORTER, text: "loader config [KEY]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" }
+                    }},
+                    { opcode: "loaderConfigExists", blockType: Scratch.BlockType.BOOLEAN, text: "loader config [KEY] exists?", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" }
+                    }},
+                    { opcode: "clearLoaderConfig", blockType: Scratch.BlockType.COMMAND, text: "clear loader configuration" },
+                    { opcode: "listLoaderConfig", blockType: Scratch.BlockType.REPORTER, text: "list loader configuration" },
+
+                    // =========================
+                    // LOADING SCREEN
+                    // =========================
+                    "---",
                     { opcode: "showLoading", blockType: Scratch.BlockType.COMMAND, text: "show Silicon loading screen" },
                     { opcode: "hideLoading", blockType: Scratch.BlockType.COMMAND, text: "hide Silicon loading screen" },
                     { opcode: "loadingVisible", blockType: Scratch.BlockType.BOOLEAN, text: "loading screen visible?" },
-                    { opcode: "getProgress", blockType: Scratch.BlockType.REPORTER, text: "loading progress" },
+                    { opcode: "setLoadingMode", blockType: Scratch.BlockType.COMMAND, text: "set loading screen mode to [MODE]", arguments: {
+                        MODE: { type: Scratch.ArgumentType.STRING, menu: "screenModes", defaultValue: "Built-in" }
+                    }},
+                    { opcode: "getLoadingMode", blockType: Scratch.BlockType.REPORTER, text: "loading screen mode" },
+                    { opcode: "setLoadingConfig", blockType: Scratch.BlockType.COMMAND, text: "set Silicon loading config [KEY] to [VALUE]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "title" },
+                        VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "Silicon" }
+                    }},
+                    { opcode: "getLoadingConfig", blockType: Scratch.BlockType.REPORTER, text: "Silicon loading config [KEY]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "title" }
+                    }},
+                    { opcode: "loadingConfigExists", blockType: Scratch.BlockType.BOOLEAN, text: "loading config [KEY] exists?", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "title" }
+                    }},
+                    { opcode: "resetLoadingConfig", blockType: Scratch.BlockType.COMMAND, text: "reset Silicon loading config" },
+                    { opcode: "loadingScreenData", blockType: Scratch.BlockType.REPORTER, text: "loading screen data" },
+
+                    { opcode: "setLoadingStatus", blockType: Scratch.BlockType.COMMAND, text: "set loading status to [TEXT]", arguments: {
+                        TEXT: { type: Scratch.ArgumentType.STRING, defaultValue: "Initializing..." }
+                    }},
                     { opcode: "getLoadingStatus", blockType: Scratch.BlockType.REPORTER, text: "loading status" },
-                    { opcode: "setLoadingStatus", blockType: Scratch.BlockType.COMMAND, text: "set loading status to [TEXT]", arguments: { TEXT: { type: Scratch.ArgumentType.STRING, defaultValue: "Initializing..." } } },
-                    { opcode: "setProgress", blockType: Scratch.BlockType.COMMAND, text: "set loading progress to [NUMBER] %", arguments: { NUMBER: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
+                    { opcode: "setProgress", blockType: Scratch.BlockType.COMMAND, text: "set loading progress to [NUMBER] %", arguments: {
+                        NUMBER: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
+                    }},
+                    { opcode: "getProgress", blockType: Scratch.BlockType.REPORTER, text: "loading progress" },
 
-                    { opcode: "isLoaded", blockType: Scratch.BlockType.BOOLEAN, text: "project loaded?" },
-                    { opcode: "getLoader", blockType: Scratch.BlockType.REPORTER, text: "current loader" },
-                    { opcode: "getStatus", blockType: Scratch.BlockType.REPORTER, text: "Silicon status" },
-                    { opcode: "getLoaderVersion", blockType: Scratch.BlockType.REPORTER, text: "loader version" },
-                    { opcode: "getProjectName", blockType: Scratch.BlockType.REPORTER, text: "loaded project name" },
-                    { opcode: "getProjectVersion", blockType: Scratch.BlockType.REPORTER, text: "project version" },
-                    { opcode: "getProjectId", blockType: Scratch.BlockType.REPORTER, text: "project ID" },
-                    { opcode: "loaderSupported", blockType: Scratch.BlockType.BOOLEAN, text: "[LOADER] supported?", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
+                    // =========================
+                    // PROJECT CONFIGURATION
+                    // =========================
+                    "---",
+                    { opcode: "setConfig", blockType: Scratch.BlockType.COMMAND, text: "set config [KEY] to [VALUE]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" },
+                        VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "normal" }
+                    }},
+                    { opcode: "getConfig", blockType: Scratch.BlockType.REPORTER, text: "config [KEY]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" }
+                    }},
+                    { opcode: "configExists", blockType: Scratch.BlockType.BOOLEAN, text: "config [KEY] exists?", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" }
+                    }},
+                    { opcode: "clearConfig", blockType: Scratch.BlockType.COMMAND, text: "clear configuration" },
+                    { opcode: "listConfig", blockType: Scratch.BlockType.REPORTER, text: "list configuration" },
 
-                    { opcode: "registerModule", blockType: Scratch.BlockType.COMMAND, text: "register module [NAME] version [VERSION]", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" }, VERSION: { type: Scratch.ArgumentType.STRING, defaultValue: "1.0.0" } } },
-                    { opcode: "removeModule", blockType: Scratch.BlockType.COMMAND, text: "remove module [NAME]", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" } } },
-                    { opcode: "moduleLoaded", blockType: Scratch.BlockType.BOOLEAN, text: "module [NAME] loaded?", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" } } },
-                    { opcode: "moduleVersion", blockType: Scratch.BlockType.REPORTER, text: "module [NAME] version", arguments: { NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" } } },
+                    // =========================
+                    // MODULES
+                    // =========================
+                    "---",
+                    { opcode: "registerModule", blockType: Scratch.BlockType.COMMAND, text: "register module [NAME] version [VERSION]", arguments: {
+                        NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" },
+                        VERSION: { type: Scratch.ArgumentType.STRING, defaultValue: "1.0.0" }
+                    }},
+                    { opcode: "removeModule", blockType: Scratch.BlockType.COMMAND, text: "remove module [NAME]", arguments: {
+                        NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" }
+                    }},
+                    { opcode: "moduleLoaded", blockType: Scratch.BlockType.BOOLEAN, text: "module [NAME] loaded?", arguments: {
+                        NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" }
+                    }},
+                    { opcode: "moduleVersion", blockType: Scratch.BlockType.REPORTER, text: "module [NAME] version", arguments: {
+                        NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" }
+                    }},
+                    { opcode: "moduleLoader", blockType: Scratch.BlockType.REPORTER, text: "module [NAME] loader", arguments: {
+                        NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Example" }
+                    }},
                     { opcode: "moduleCount", blockType: Scratch.BlockType.REPORTER, text: "number of modules" },
                     { opcode: "listModules", blockType: Scratch.BlockType.REPORTER, text: "list modules" },
 
-                    { opcode: "setConfig", blockType: Scratch.BlockType.COMMAND, text: "set config [KEY] to [VALUE]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "normal" } } },
-                    { opcode: "getConfig", blockType: Scratch.BlockType.REPORTER, text: "config [KEY]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" } } },
-                    { opcode: "configExists", blockType: Scratch.BlockType.BOOLEAN, text: "config [KEY] exists?", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "mode" } } },
-                    { opcode: "clearConfig", blockType: Scratch.BlockType.COMMAND, text: "clear configuration" },
+                    // =========================
+                    // PROJECT METADATA
+                    // =========================
+                    "---",
+                    { opcode: "getProjectName", blockType: Scratch.BlockType.REPORTER, text: "loaded project name" },
+                    { opcode: "getProjectVersion", blockType: Scratch.BlockType.REPORTER, text: "project version" },
+                    { opcode: "getProjectId", blockType: Scratch.BlockType.REPORTER, text: "project ID" },
+                    { opcode: "setProjectMetadata", blockType: Scratch.BlockType.COMMAND, text: "set project [KEY] to [VALUE]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "name" },
+                        VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "Gandi Project" }
+                    }},
+                    { opcode: "getProjectMetadata", blockType: Scratch.BlockType.REPORTER, text: "project metadata [KEY]", arguments: {
+                        KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "name" }
+                    }},
 
+                    // =========================
+                    // DEBUGGING & ERRORS
+                    // =========================
+                    "---",
                     { opcode: "enableDebug", blockType: Scratch.BlockType.COMMAND, text: "enable debug mode" },
                     { opcode: "disableDebug", blockType: Scratch.BlockType.COMMAND, text: "disable debug mode" },
                     { opcode: "debugMode", blockType: Scratch.BlockType.BOOLEAN, text: "debug mode?" },
@@ -73,14 +201,29 @@
                     { opcode: "clearError", blockType: Scratch.BlockType.COMMAND, text: "clear error" },
                     { opcode: "siliconLog", blockType: Scratch.BlockType.REPORTER, text: "Silicon log" },
 
+                    // =========================
+                    // RUNTIME & EVENTS
+                    // =========================
+                    "---",
+                    { opcode: "getStatus", blockType: Scratch.BlockType.REPORTER, text: "Silicon status" },
                     { opcode: "runtimeState", blockType: Scratch.BlockType.REPORTER, text: "runtime state" },
                     { opcode: "runtimeUptime", blockType: Scratch.BlockType.REPORTER, text: "runtime uptime" },
                     { opcode: "lastEvent", blockType: Scratch.BlockType.REPORTER, text: "last event" },
-                    { opcode: "fireEvent", blockType: Scratch.BlockType.COMMAND, text: "fire event [EVENT]", arguments: { EVENT: { type: Scratch.ArgumentType.STRING, defaultValue: "ready" } } },
+                    { opcode: "fireEvent", blockType: Scratch.BlockType.COMMAND, text: "fire event [EVENT]", arguments: {
+                        EVENT: { type: Scratch.ArgumentType.STRING, defaultValue: "ready" }
+                    }},
                     { opcode: "resetSilicon", blockType: Scratch.BlockType.COMMAND, text: "reset Silicon" }
                 ],
+
                 menus: {
-                    loaders: { acceptReporters: true, items: ["Fabric", "NeoVirus"] }
+                    loaders: {
+                        acceptReporters: true,
+                        items: ["Fabric", "NeoVirus"]
+                    },
+                    screenModes: {
+                        acceptReporters: true,
+                        items: ["Built-in", "Custom", "Off"]
+                    }
                 }
             };
         }
@@ -88,15 +231,27 @@
         _log(message) {
             const entry = "[" + new Date().toLocaleTimeString() + "] " + message;
             this.events.push(entry);
-            if (this.events.length > 30) this.events.shift();
-            this.lastEvent = message;
+            if (this.events.length > 50) this.events.shift();
+            this.lastEventText = message;
         }
 
         _setStage(progress, status) {
-            this.progress = Math.max(0, Math.min(100, progress));
-            this.loadingStatus = status;
-            this.status = status;
-            this._log(status);
+            this.progress = Math.max(0, Math.min(100, Number(progress) || 0));
+            this.loadingStatus = String(status);
+            this.status = String(status);
+            this._log(this.loadingStatus);
+        }
+
+        _fail(message) {
+            this.bootToken++;
+            this.loading = false;
+            this.loaded = false;
+            this.loadingScreenVisible = true;
+            this.loadingScreenMode = "builtin";
+            this.error = String(message);
+            this.status = "Silicon error";
+            this.loadingStatus = "ERROR: " + this.error;
+            this._log("ERROR: " + this.error);
         }
 
         _loaderMessages(loader) {
@@ -109,6 +264,7 @@
                     ["Initializing Fabric runtime", 60]
                 ];
             }
+
             return [
                 ["Starting NeoVirus Loader", 8],
                 ["Scanning NeoVirus environment", 18],
@@ -120,11 +276,17 @@
 
         setLoader(args) {
             const loader = String(args.LOADER || "Fabric");
+
             if (!this.loaderSupported({ LOADER: loader })) {
                 this._fail("Unsupported loader: " + loader);
                 return;
             }
-            if (this.loading) this._fail("Cannot change loader while Silicon is loading");
+
+            if (this.loading) {
+                this._fail("Cannot change loader while Silicon is loading");
+                return;
+            }
+
             this.loader = loader;
             this.loaded = false;
             this._setStage(0, loader + " selected");
@@ -132,6 +294,7 @@
 
         loadProject(args) {
             const loader = String(args.LOADER || this.loader);
+
             if (!this.loaderSupported({ LOADER: loader })) {
                 this._fail("Unsupported loader: " + loader);
                 return;
@@ -139,43 +302,57 @@
 
             this.bootToken++;
             const token = this.bootToken;
+
             this.loader = loader;
             this.loaded = false;
             this.loading = true;
             this.loadingScreenVisible = true;
+            this.loadingScreenMode = this.loadingScreenMode === "off" ? "builtin" : this.loadingScreenMode;
             this.error = "";
             this.progress = 0;
             this.startedAt = Date.now();
+
             this._setStage(0, "Silicon Bootloader starting...");
 
             const stages = [
-                [450, 5, "Initializing Silicon core"],
-                [850, 10, "Detecting " + loader + " Loader"],
-                ...this._loaderMessages(loader).map(x => [550, x[1], x[0]]),
-                [650, 68, "Loading project metadata"],
-                [500, 76, "Initializing project modules"],
-                [500, 86, "Starting Silicon runtime"],
-                [550, 94, "Finalizing startup"],
-                [450, 100, "Silicon startup complete"]
+                [350, 5, "Initializing Silicon core"],
+                [500, 10, "Detecting " + loader + " Loader"],
+                ...this._loaderMessages(loader).map(function (x) {
+                    return [450, x[1], x[0]];
+                }),
+                [500, 68, "Loading project metadata"],
+                [450, 76, "Initializing project modules"],
+                [450, 86, "Starting Silicon runtime"],
+                [450, 94, "Finalizing startup"],
+                [400, 100, "Silicon startup complete"]
             ];
 
-            let i = 0;
+            let index = 0;
+
             const next = () => {
                 if (token !== this.bootToken) return;
-                if (i >= stages.length) {
+
+                if (index >= stages.length) {
                     this.loading = false;
                     this.loaded = true;
-                    this.projectName = "Gandi Project";
+                    this.projectName = this.projectName || "Gandi Project";
                     this._setStage(100, loader + " loaded successfully");
+                    this.fireEvent({ EVENT: "ready" });
+
                     setTimeout(() => {
-                        if (token === this.bootToken) this.loadingScreenVisible = false;
+                        if (token === this.bootToken && !this.error) {
+                            this.loadingScreenVisible = false;
+                        }
                     }, 900);
+
                     return;
                 }
-                const [delay, progress, status] = stages[i++];
-                this._setStage(progress, status);
-                setTimeout(next, delay);
+
+                const stage = stages[index++];
+                this._setStage(stage[1], stage[2]);
+                setTimeout(next, stage[0]);
             };
+
             next();
         }
 
@@ -184,6 +361,7 @@
                 this._fail("No project is currently loaded");
                 return;
             }
+
             this.loadProject({ LOADER: this.loader });
         }
 
@@ -195,82 +373,342 @@
             this.progress = 0;
             this.projectName = "";
             this._setStage(0, "Project unloaded");
+            this.fireEvent({ EVENT: "unloaded" });
         }
 
-        _fail(message) {
-            this.bootToken++;
-            this.loading = false;
-            this.loaded = false;
+        // =========================
+        // Loading screen API
+        // =========================
+
+        showLoading() {
             this.loadingScreenVisible = true;
-            this.error = message;
-            this.status = "Silicon error";
-            this.loadingStatus = "ERROR: " + message;
-            this._log("ERROR: " + message);
         }
 
-        showLoading() { this.loadingScreenVisible = true; }
-        hideLoading() { this.loadingScreenVisible = false; }
-        isLoadingScreenVisible() { return this.loadingScreenVisible; }
-        getProgress() { return Math.round(this.progress); }
-        getLoadingStatus() { return this.loadingStatus; }
-        setLoadingStatus(args) { this.loadingStatus = String(args.TEXT); this.status = this.loadingStatus; this._log(this.loadingStatus); }
-        setProgress(args) { this.progress = Math.max(0, Math.min(100, Number(args.NUMBER) || 0)); }
-
-        isLoaded() { return this.loaded; }
-        getLoader() { return this.loader; }
-        getStatus() { return this.status; }
-        getLoaderVersion() { return this.loaderVersion; }
-        getProjectName() { return this.projectName; }
-        getProjectVersion() { return this.projectVersion; }
-        getProjectId() { return this.projectId; }
-
-        loaderSupported(args) {
-            const loader = String(args.LOADER || "").toLowerCase();
-            return loader === "fabric" || loader === "neovirus";
+        hideLoading() {
+            this.loadingScreenVisible = false;
         }
+
+        isLoadingScreenVisible() {
+            return this.loadingScreenVisible;
+        }
+
+        setLoadingMode(args) {
+            const mode = String(args.MODE || "Built-in").toLowerCase();
+
+            if (mode === "built-in" || mode === "builtin") {
+                this.loadingScreenMode = "builtin";
+            } else if (mode === "custom") {
+                this.loadingScreenMode = "custom";
+            } else {
+                this.loadingScreenMode = "off";
+                this.loadingScreenVisible = false;
+            }
+
+            this._log("Loading screen mode: " + this.loadingScreenMode);
+        }
+
+        getLoadingMode() {
+            return this.loadingScreenMode;
+        }
+
+        setLoadingConfig(args) {
+            const key = String(args.KEY || "").trim();
+            if (!key) return;
+
+            let value = String(args.VALUE == null ? "" : args.VALUE);
+
+            if (key === "showProgress" || key === "showStatus" ||
+                key === "showPercent" || key === "showLoader" ||
+                key === "showError") {
+                value = value.toLowerCase() === "true";
+            }
+
+            this.loadingScreenConfig[key] = value;
+            this._log("Loading config changed: " + key);
+        }
+
+        getLoadingConfig(args) {
+            const key = String(args.KEY || "");
+            const value = this.loadingScreenConfig[key];
+
+            if (value === undefined) return "";
+            return typeof value === "boolean" ? String(value) : value;
+        }
+
+        loadingConfigExists(args) {
+            const key = String(args.KEY || "");
+            return Object.prototype.hasOwnProperty.call(this.loadingScreenConfig, key);
+        }
+
+        resetLoadingConfig() {
+            this.loadingScreenConfig = {
+                title: "Silicon",
+                subtitle: "Booting project...",
+                logo: "S",
+                background: "#0b1020",
+                foreground: "#ffffff",
+                accent: "#4b8cff",
+                progress: "#4b8cff",
+                error: "#ff4b4b",
+                animation: "pulse",
+                showProgress: true,
+                showStatus: true,
+                showPercent: true,
+                showLoader: true,
+                showError: true
+            };
+
+            this._log("Loading screen configuration reset");
+        }
+
+        /*
+         * This reporter gives a renderer everything needed to draw Silicon's
+         * built-in screen without requiring access to the VM.
+         */
+        loadingScreenData() {
+            return JSON.stringify({
+                mode: this.loadingScreenMode,
+                visible: this.loadingScreenVisible,
+                title: this.loadingScreenConfig.title,
+                subtitle: this.loadingScreenConfig.subtitle,
+                logo: this.loadingScreenConfig.logo,
+                background: this.loadingScreenConfig.background,
+                foreground: this.loadingScreenConfig.foreground,
+                accent: this.loadingScreenConfig.accent,
+                progressColor: this.loadingScreenConfig.progress,
+                errorColor: this.loadingScreenConfig.error,
+                animation: this.loadingScreenConfig.animation,
+                progress: Math.round(this.progress),
+                status: this.loadingStatus,
+                loader: this.loader,
+                error: this.error,
+                showProgress: this.loadingScreenConfig.showProgress,
+                showStatus: this.loadingScreenConfig.showStatus,
+                showPercent: this.loadingScreenConfig.showPercent,
+                showLoader: this.loadingScreenConfig.showLoader,
+                showError: this.loadingScreenConfig.showError
+            });
+        }
+
+        setLoadingStatus(args) {
+            this.loadingStatus = String(args.TEXT == null ? "" : args.TEXT);
+            this.status = this.loadingStatus;
+            this._log(this.loadingStatus);
+        }
+
+        getLoadingStatus() {
+            return this.loadingStatus;
+        }
+
+        setProgress(args) {
+            const value = Number(args.NUMBER);
+            this.progress = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+        }
+
+        getProgress() {
+            return Math.round(this.progress);
+        }
+
+        // =========================
+        // Loader configuration
+        // =========================
+
+        setLoaderConfig(args) {
+            const key = String(args.KEY || "").trim();
+            if (!key) return;
+
+            this.loaderConfig = this.loaderConfig || {};
+            this.loaderConfig[key] = String(args.VALUE == null ? "" : args.VALUE);
+            this._log("Loader config changed: " + key);
+        }
+
+        getLoaderConfig(args) {
+            const key = String(args.KEY || "");
+            this.loaderConfig = this.loaderConfig || {};
+            return Object.prototype.hasOwnProperty.call(this.loaderConfig, key)
+                ? this.loaderConfig[key]
+                : "";
+        }
+
+        loaderConfigExists(args) {
+            const key = String(args.KEY || "");
+            this.loaderConfig = this.loaderConfig || {};
+            return Object.prototype.hasOwnProperty.call(this.loaderConfig, key);
+        }
+
+        clearLoaderConfig() {
+            this.loaderConfig = {};
+            this._log("Loader configuration cleared");
+        }
+
+        listLoaderConfig() {
+            this.loaderConfig = this.loaderConfig || {};
+            return Object.keys(this.loaderConfig).join(", ");
+        }
+
+        // =========================
+        // Project configuration
+        // =========================
+
+        setConfig(args) {
+            const key = String(args.KEY || "").trim();
+            if (!key) return;
+
+            this.config[key] = String(args.VALUE == null ? "" : args.VALUE);
+            this._log("Config changed: " + key);
+        }
+
+        getConfig(args) {
+            const key = String(args.KEY || "");
+            return Object.prototype.hasOwnProperty.call(this.config, key)
+                ? this.config[key]
+                : "";
+        }
+
+        configExists(args) {
+            return Object.prototype.hasOwnProperty.call(this.config, String(args.KEY || ""));
+        }
+
+        clearConfig() {
+            this.config = {};
+            this._log("Configuration cleared");
+        }
+
+        listConfig() {
+            return Object.keys(this.config).join(", ");
+        }
+
+        // =========================
+        // Modules
+        // =========================
 
         registerModule(args) {
             const name = String(args.NAME || "").trim();
             const version = String(args.VERSION || "1.0.0");
+
             if (!name) return;
-            this.modules[name] = { version: version, loaded: true, loader: this.loader };
+
+            this.modules[name] = {
+                version: version,
+                loaded: true,
+                loader: this.loader
+            };
+
             this._log("Module loaded: " + name + " " + version);
         }
 
         removeModule(args) {
             const name = String(args.NAME || "").trim();
+            if (!name) return;
+
             delete this.modules[name];
             this._log("Module removed: " + name);
         }
 
         moduleLoaded(args) {
-            const m = this.modules[String(args.NAME || "").trim()];
-            return !!(m && m.loaded);
+            const module = this.modules[String(args.NAME || "").trim()];
+            return !!(module && module.loaded);
         }
 
         moduleVersion(args) {
-            const m = this.modules[String(args.NAME || "").trim()];
-            return m ? m.version : "";
+            const module = this.modules[String(args.NAME || "").trim()];
+            return module ? module.version : "";
         }
 
-        moduleCount() { return Object.keys(this.modules).length; }
-        listModules() { return Object.keys(this.modules).join(", "); }
-
-        setConfig(args) {
-            this.config[String(args.KEY)] = String(args.VALUE);
-            this._log("Config changed: " + args.KEY);
+        moduleLoader(args) {
+            const module = this.modules[String(args.NAME || "").trim()];
+            return module ? module.loader : "";
         }
 
-        getConfig(args) { return Object.prototype.hasOwnProperty.call(this.config, String(args.KEY)) ? this.config[String(args.KEY)] : ""; }
-        configExists(args) { return Object.prototype.hasOwnProperty.call(this.config, String(args.KEY)); }
-        clearConfig() { this.config = {}; this._log("Configuration cleared"); }
+        moduleCount() {
+            return Object.keys(this.modules).length;
+        }
 
-        enableDebug() { this.debug = true; this._log("Debug mode enabled"); }
-        disableDebug() { this.debug = false; this._log("Debug mode disabled"); }
-        debugMode() { return this.debug; }
-        lastError() { return this.error; }
-        clearError() { this.error = ""; }
-        siliconLog() { return this.events.join("\n"); }
+        listModules() {
+            return Object.keys(this.modules).join(", ");
+        }
+
+        // =========================
+        // Project metadata
+        // =========================
+
+        getProjectName() {
+            return this.projectName;
+        }
+
+        getProjectVersion() {
+            return this.projectVersion;
+        }
+
+        getProjectId() {
+            return this.projectId;
+        }
+
+        setProjectMetadata(args) {
+            const key = String(args.KEY || "").toLowerCase().trim();
+            const value = String(args.VALUE == null ? "" : args.VALUE);
+
+            if (key === "name") this.projectName = value;
+            else if (key === "version") this.projectVersion = value;
+            else if (key === "id") this.projectId = value;
+            else this.config["project." + key] = value;
+
+            this._log("Project metadata changed: " + key);
+        }
+
+        getProjectMetadata(args) {
+            const key = String(args.KEY || "").toLowerCase().trim();
+
+            if (key === "name") return this.projectName;
+            if (key === "version") return this.projectVersion;
+            if (key === "id") return this.projectId;
+
+            const configKey = "project." + key;
+            return Object.prototype.hasOwnProperty.call(this.config, configKey)
+                ? this.config[configKey]
+                : "";
+        }
+
+        // =========================
+        // Debugging
+        // =========================
+
+        enableDebug() {
+            this.debug = true;
+            this._log("Debug mode enabled");
+        }
+
+        disableDebug() {
+            this.debug = false;
+            this._log("Debug mode disabled");
+        }
+
+        debugMode() {
+            return this.debug;
+        }
+
+        lastError() {
+            return this.error;
+        }
+
+        clearError() {
+            this.error = "";
+            if (this.loadingStatus.indexOf("ERROR: ") === 0) {
+                this.loadingStatus = "Silicon ready";
+            }
+        }
+
+        siliconLog() {
+            return this.events.join("\n");
+        }
+
+        // =========================
+        // Runtime
+        // =========================
+
+        getStatus() {
+            return this.status;
+        }
 
         runtimeState() {
             if (this.error) return "error";
@@ -280,27 +718,65 @@
         }
 
         runtimeUptime() {
-            return this.startedAt ? Math.max(0, Math.floor((Date.now() - this.startedAt) / 1000)) : 0;
+            return this.startedAt
+                ? Math.max(0, Math.floor((Date.now() - this.startedAt) / 1000))
+                : 0;
         }
 
-        lastEvent() { return this.lastEvent; }
-        fireEvent(args) { this.lastEvent = String(args.EVENT); this._log("Event: " + this.lastEvent); }
+        lastEvent() {
+            return this.lastEventText;
+        }
+
+        fireEvent(args) {
+            const eventName = String(args.EVENT || "");
+            this.lastEventText = eventName;
+            this._log("Event: " + eventName);
+        }
 
         resetSilicon() {
             this.bootToken++;
+
             this.loader = "Fabric";
             this.loaded = false;
             this.loading = false;
+
             this.loadingScreenVisible = false;
+            this.loadingScreenMode = "builtin";
+            this.resetLoadingConfig();
+
             this.progress = 0;
             this.loadingStatus = "Silicon ready";
             this.status = "Silicon ready";
             this.error = "";
+
+            this.projectName = "Gandi Project";
+            this.projectVersion = "1.0.0";
+            this.projectId = "gandi-project";
+
+            this.debug = false;
             this.modules = {};
             this.config = {};
+            this.loaderConfig = {};
             this.events = [];
-            this.lastEvent = "";
+            this.lastEventText = "";
             this.startedAt = 0;
+        }
+
+        isLoaded() {
+            return this.loaded;
+        }
+
+        getLoader() {
+            return this.loader;
+        }
+
+        getLoaderVersion() {
+            return this.loaderVersion;
+        }
+
+        loaderSupported(args) {
+            const loader = String(args.LOADER || "").toLowerCase();
+            return loader === "fabric" || loader === "neovirus";
         }
     }
 
