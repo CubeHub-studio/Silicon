@@ -11,7 +11,7 @@
             this.loadingScreenConfig = {
                 title: "Silicon",
                 subtitle: "Booting project...",
-                logo: "S",
+                logo: "",
                 background: "#0b1020",
                 foreground: "#ffffff",
                 accent: "#4b8cff",
