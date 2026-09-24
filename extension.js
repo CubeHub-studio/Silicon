@@ -208,7 +208,34 @@
             // Fabric and NeoVirus are not JavaScript loaders built into Gandi, so do not
             // claim they loaded unless a backend was explicitly provided to Silicon.
             const backends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
-            const backend = backends[loader] || backends[loader.toLowerCase()];
+            let backend = backends[loader] || backends[loader.toLowerCase()];
+
+            // NeoVirus is served separately so Silicon can load the real backend
+            // into this extension sandbox before starting it.
+            if (!backend && loader.toLowerCase() === "neovirus") {
+                const url = "https://cubehub-studio.github.io/NeoVirus-Loader/loader.js";
+                try {
+                    if (typeof Scratch.fetch !== "function") {
+                        throw new Error("Silicon cannot fetch the NeoVirus Loader.");
+                    }
+
+                    const response = await Scratch.fetch(url);
+                    if (!response || !response.ok) {
+                        throw new Error("HTTP " + (response ? response.status : "request failed"));
+                    }
+
+                    const source = await response.text();
+                    const runLoader = new Function(source + "\n//# sourceURL=" + url);
+                    runLoader();
+
+                    const loadedBackends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
+                    backend = loadedBackends.neovirus || loadedBackends.NeoVirus;
+                } catch (e) {
+                    this._fail("NeoVirus Loader could not be loaded: " + (e && e.message ? e.message : String(e)));
+                    return;
+                }
+            }
+
             if (!backend || typeof backend.boot !== "function") {
                 this._fail(loader + " loader backend is not installed. Silicon will not pretend it loaded.");
                 return;
