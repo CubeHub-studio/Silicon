@@ -275,7 +275,7 @@
             for (const stage of stages) this._setStage(stage[0], stage[1]);
 
             try {
-                const result = backend.boot({loader: loader, silicon: this});
+                const result = await backend.boot({loader: loader, silicon: this});
                 if (result === false) throw new Error(loader + " loader backend rejected startup");
                 this._setStage(70, loader + " runtime initialized");
                 this._setStage(85, "Loading project metadata");
