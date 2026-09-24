@@ -215,11 +215,18 @@
             if (!backend && loader.toLowerCase() === "neovirus") {
                 const url = "https://cubehub-studio.github.io/NeoVirus-Loader/loader.js";
                 try {
-                    if (typeof Scratch.fetch !== "function") {
-                        throw new Error("Silicon cannot fetch the NeoVirus Loader.");
+                    const fetcher =
+                        typeof Scratch.fetch === "function"
+                            ? Scratch.fetch.bind(Scratch)
+                            : (typeof globalThis !== "undefined" && typeof globalThis.fetch === "function")
+                                ? globalThis.fetch.bind(globalThis)
+                                : null;
+
+                    if (!fetcher) {
+                        throw new Error("Silicon cannot fetch the NeoVirus Loader in this extension sandbox.");
                     }
 
-                    const response = await Scratch.fetch(url);
+                    const response = await fetcher(url);
                     if (!response || !response.ok) {
                         throw new Error("HTTP " + (response ? response.status : "request failed"));
                     }
