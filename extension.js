@@ -80,7 +80,7 @@
                     { opcode: "resetLoadingConfig", blockType: Scratch.BlockType.COMMAND, text: "reset Silicon loading config" },
                     { opcode: "loadingScreenData", blockType: Scratch.BlockType.REPORTER, text: "loading screen data" },
                     { opcode: "loadingScreenFrame", blockType: Scratch.BlockType.REPORTER, text: "loading screen animation frame" },
-                    { opcode: "loadingScreenText", blockType: Scratch.BlockType.REPORTER, text: "Silicon loading screen text v line [LINE]", arguments: { LINE: { type: Scratch.ArgumentType.NUMBER, menu: "loadingLines", defaultValue: 1 } } },
+                    { opcode: "loadingScreenText", blockType: Scratch.BlockType.REPORTER, text: "Silicon loading screen line [LINE]", arguments: { LINE: { type: Scratch.ArgumentType.STRING, menu: "loadingLines", defaultValue: "1" } } },
                     { opcode: "setLoadingStatus", blockType: Scratch.BlockType.COMMAND, text: "set loading status to [TEXT]", arguments: { TEXT: { type: Scratch.ArgumentType.STRING, defaultValue: "Initializing..." } } },
                     { opcode: "getLoadingStatus", blockType: Scratch.BlockType.REPORTER, text: "loading status" },
                     { opcode: "setProgress", blockType: Scratch.BlockType.COMMAND, text: "set loading progress to [NUMBER] %", arguments: { NUMBER: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
@@ -340,7 +340,7 @@
 
         resetLoadingConfig() {
             this.loadingScreenConfig = {
-                title:"Silicon", subtitle:"Booting project...", logo:"S",
+                title:"Silicon", subtitle:"Booting project...", logo:"",
                 background:"#0b1020", foreground:"#ffffff", accent:"#4b8cff",
                 progress:"#4b8cff", error:"#ff4b4b", animation:"pulse",
                 showProgress:true, showStatus:true, showPercent:true,
