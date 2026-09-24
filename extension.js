@@ -187,7 +187,7 @@
             this._setStage(0, loader + " selected");
         }
 
-        loadProject(args) {
+        async loadProject(args) {
             const loader = String(args.LOADER || this.loader);
             if (!this.loaderSupported({LOADER: loader})) {
                 this._fail("Unsupported loader: " + loader);
