@@ -204,16 +204,23 @@
             this.progress = 0;
             this.startedAt = Date.now();
 
-            // Silicon must have a real loader backend before it can report success.
-            // Fabric and NeoVirus are not JavaScript loaders built into Gandi, so do not
-            // claim they loaded unless a backend was explicitly provided to Silicon.
+            // Silicon loads the selected backend from GitHub Pages.
+            // These are the real backend endpoints used by the project.
+            const backendUrls = {
+                fabric: "https://cubehub-studio.github.io/fabric-loader-For-Silicon/loader.js",
+                neovirus: "https://cubehub-studio.github.io/NeoVirus-Loader/loader.js"
+            };
+
             const backends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
             let backend = backends[loader] || backends[loader.toLowerCase()];
 
-            // NeoVirus is served separately so Silicon can load the real backend
-            // into this extension sandbox before starting it.
-            if (!backend && loader.toLowerCase() === "neovirus") {
-                const url = "https://cubehub-studio.github.io/NeoVirus-Loader/loader.js";
+            if (!backend) {
+                const url = backendUrls[loader.toLowerCase()];
+                if (!url) {
+                    this._fail("No backend URL is configured for " + loader + ".");
+                    return;
+                }
+
                 try {
                     const fetcher =
                         typeof Scratch.fetch === "function"
@@ -223,28 +230,39 @@
                                 : null;
 
                     if (!fetcher) {
-                        throw new Error("Silicon cannot fetch the NeoVirus Loader in this extension sandbox.");
+                        throw new Error("Silicon cannot fetch the " + loader + " backend in this extension sandbox.");
                     }
 
+                    this._setStage(5, "Downloading " + loader + " backend");
                     const response = await fetcher(url);
                     if (!response || !response.ok) {
                         throw new Error("HTTP " + (response ? response.status : "request failed"));
                     }
 
                     const source = await response.text();
+                    if (!source.trim()) {
+                        throw new Error("The backend returned an empty loader.js.");
+                    }
+
                     const runLoader = new Function(source + "\n//# sourceURL=" + url);
                     runLoader();
 
                     const loadedBackends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
-                    backend = loadedBackends.neovirus || loadedBackends.NeoVirus;
+                    backend = loadedBackends[loader.toLowerCase()] || loadedBackends[loader];
+
+                    if (!backend) {
+                        throw new Error(loader + " backend did not register itself.");
+                    }
+
+                    this._setStage(8, loader + " backend loaded");
                 } catch (e) {
-                    this._fail("NeoVirus Loader could not be loaded: " + (e && e.message ? e.message : String(e)));
+                    this._fail(loader + " backend could not be loaded: " + (e && e.message ? e.message : String(e)));
                     return;
                 }
             }
 
             if (!backend || typeof backend.boot !== "function") {
-                this._fail(loader + " loader backend is not installed. Silicon will not pretend it loaded.");
+                this._fail(loader + " backend is invalid: boot() is missing.");
                 return;
             }
 
