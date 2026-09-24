@@ -80,7 +80,7 @@
                     { opcode: "resetLoadingConfig", blockType: Scratch.BlockType.COMMAND, text: "reset Silicon loading config" },
                     { opcode: "loadingScreenData", blockType: Scratch.BlockType.REPORTER, text: "loading screen data" },
                     { opcode: "loadingScreenFrame", blockType: Scratch.BlockType.REPORTER, text: "loading screen animation frame" },
-                    { opcode: "loadingScreenText", blockType: Scratch.BlockType.REPORTER, text: "Silicon loading screen text" },
+                    { opcode: "loadingScreenText", blockType: Scratch.BlockType.REPORTER, text: "Silicon loading screen text v line [LINE]", arguments: { LINE: { type: Scratch.ArgumentType.NUMBER, menu: "loadingLines", defaultValue: 1 } } },
                     { opcode: "setLoadingStatus", blockType: Scratch.BlockType.COMMAND, text: "set loading status to [TEXT]", arguments: { TEXT: { type: Scratch.ArgumentType.STRING, defaultValue: "Initializing..." } } },
                     { opcode: "getLoadingStatus", blockType: Scratch.BlockType.REPORTER, text: "loading status" },
                     { opcode: "setProgress", blockType: Scratch.BlockType.COMMAND, text: "set loading progress to [NUMBER] %", arguments: { NUMBER: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 } } },
@@ -127,7 +127,8 @@
                 ],
                 menus: {
                     loaders: { acceptReporters: true, items: ["Fabric", "NeoVirus"] },
-                    screenModes: { acceptReporters: true, items: ["Stage", "Custom", "Off"] }
+                    screenModes: { acceptReporters: true, items: ["Stage", "Custom", "Off"] },
+                    loadingLines: { acceptReporters: true, items: ["1", "2", "3", "4", "5", "6"] }
                 }
             };
         }
@@ -203,23 +204,37 @@
             this.progress = 0;
             this.startedAt = Date.now();
 
+            // Silicon must have a real loader backend before it can report success.
+            // Fabric and NeoVirus are not JavaScript loaders built into Gandi, so do not
+            // claim they loaded unless a backend was explicitly provided to Silicon.
+            const backends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
+            const backend = backends[loader] || backends[loader.toLowerCase()];
+            if (!backend || typeof backend.boot !== "function") {
+                this._fail(loader + " loader backend is not installed. Silicon will not pretend it loaded.");
+                return;
+            }
+
             const stages = [
                 [5, "Initializing Silicon core"],
-                [10, "Detecting " + loader + " Loader"],
-                ...this._loaderMessages(loader),
-                [68, "Loading project metadata"],
-                [76, "Initializing project modules"],
-                [86, "Starting Silicon runtime"],
-                [94, "Finalizing startup"],
-                [100, "Silicon startup complete"]
+                [10, "Starting " + loader + " Loader"],
+                [25, "Checking " + loader + " environment"],
+                [45, "Initializing " + loader + " modules"]
             ];
-
             for (const stage of stages) this._setStage(stage[0], stage[1]);
 
-            this.loading = false;
-            this.loaded = true;
-            this._setStage(100, loader + " loaded successfully");
-            this.fireEvent({EVENT: "ready"});
+            try {
+                const result = backend.boot({loader: loader, silicon: this});
+                if (result === false) throw new Error(loader + " loader backend rejected startup");
+                this._setStage(70, loader + " runtime initialized");
+                this._setStage(85, "Loading project metadata");
+                this._setStage(95, "Starting Silicon runtime");
+                this._setStage(100, loader + " loaded successfully");
+                this.loading = false;
+                this.loaded = true;
+                this.fireEvent({EVENT: "ready"});
+            } catch (e) {
+                this._fail(loader + " loader failed: " + (e && e.message ? e.message : String(e)));
+            }
         }
 
         reloadProject() {
@@ -325,7 +340,7 @@
             });
         }
 
-        loadingScreenText() {
+        loadingScreenText(args) {
             const c = this.loadingScreenConfig;
             const barLength = 20;
             const filled = Math.round((this.progress / 100) * barLength);
@@ -337,6 +352,10 @@
             if (c.showStatus) lines.push(String(this.loadingStatus));
             if (c.showProgress) lines.push("[" + bar + "] " + Math.round(this.progress) + "%");
             if (this.error && c.showError) lines.push("ERROR: " + this.error);
+            const lineNumber = Math.floor(Number(args && args.LINE));
+            if (Number.isFinite(lineNumber) && lineNumber >= 1) {
+                return lines[lineNumber - 1] || "";
+            }
             return lines.join("\n");
         }
 
