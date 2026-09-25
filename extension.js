@@ -540,13 +540,20 @@
             try {
                 const result = await backend.boot({loader: loader, silicon: this});
                 if (result === false) throw new Error(loader + " loader backend rejected startup");
+                // Mark Silicon as loaded before publishing the success status.
+                // Gandi can evaluate reporter blocks without waiting for an async
+                // command block to finish, so the public state must be updated first.
                 this.loaderState = "running";
                 this.loaderPhase = "ready";
                 this.loaderBootFinishedAt = Date.now();
-                this._setStage(100, loader + " loaded successfully");
                 this.loading = false;
                 this.loaded = true;
+                this.status = loader + " loaded successfully";
+                this.loadingStatus = this.status;
+                this.progress = 100;
+                this._log(loader + " loaded successfully");
                 this.fireEvent({EVENT: "ready"});
+                this.fireEvent({EVENT: "project-loaded"});
             } catch (e) {
                 this._fail(loader + " loader failed: " + (e && e.message ? e.message : String(e)));
             }
@@ -582,7 +589,20 @@
 
         loadingVisible() { return this.loadingScreenVisible; }
         getLoader() { return this.loader; }
-        isLoaded() { return this.loaded; }
+
+        isLoaded() {
+            // Keep the reporter synchronized with the real backend state.
+            // This also covers hosts that observe the backend's final state
+            // before the async command continuation updates the local flag.
+            return !!(
+                this.loaded ||
+                (
+                    !this.loading &&
+                    this.loaderState === "running" &&
+                    this.loaderPhase === "ready"
+                )
+            );
+        }
 
         isLoadingScreenVisible() { return this.loadingScreenVisible; }
         loadingScreenTest() { return this.loadingScreenVisible ? "VISIBLE" : "HIDDEN"; }
