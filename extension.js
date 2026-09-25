@@ -40,6 +40,11 @@
             this.lastEventText = "";
             this.bootToken = 0;
             this.startedAt = 0;
+            this.loaderPhase = "idle";
+            this.loaderModule = "";
+            this.loaderState = "idle";
+            this.loaderBootStartedAt = 0;
+            this.loaderBootFinishedAt = 0;
         }
 
         getInfo() {
@@ -128,7 +133,7 @@
                 menus: {
                     loaders: { acceptReporters: true, items: ["Fabric", "NeoVirus"] },
                     screenModes: { acceptReporters: true, items: ["Stage", "Custom", "Off"] },
-                    loadingLines: { acceptReporters: true, items: ["1", "2", "3", "4", "5", "6"] }
+                    loadingLines: { acceptReporters: true, items: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] }
                 }
             };
         }
@@ -266,20 +271,45 @@
                 return;
             }
 
-            const stages = [
-                [5, "Initializing Silicon core"],
-                [10, "Starting " + loader + " Loader"],
-                [25, "Checking " + loader + " environment"],
-                [45, "Initializing " + loader + " modules"]
-            ];
-            for (const stage of stages) this._setStage(stage[0], stage[1]);
+            this.loaderPhase = "starting";
+            this.loaderState = "booting";
+            this.loaderModule = "";
+            this.loaderBootStartedAt = Date.now();
+
+            // Follow the real backend lifecycle instead of inventing progress.
+            if (typeof backend.on === "function") {
+                backend.on("state", data => {
+                    if (!data) return;
+                    this.loaderState = String(data.state || this.loaderState);
+                    this.loaderPhase = String(data.phase || this.loaderPhase);
+                    if (data.status) this._setStage(data.progress, data.status);
+                });
+                backend.on("moduleInitializing", data => {
+                    if (!data) return;
+                    this.loaderPhase = "initializing";
+                    this.loaderModule = String(data.id || "");
+                    this.loadingStatus = "Initializing module: " + this.loaderModule;
+                    this.status = this.loadingStatus;
+                    this._log(this.loadingStatus);
+                });
+                backend.on("moduleLoaded", data => {
+                    if (!data) return;
+                    this.loaderModule = String(data.id || this.loaderModule);
+                    this.loadingStatus = "Loaded module: " + this.loaderModule;
+                    this.status = this.loadingStatus;
+                    this._log(this.loadingStatus);
+                });
+                backend.on("error", data => {
+                    if (data && data.message) this.error = String(data.message);
+                });
+            }
 
             try {
                 const result = await backend.boot({loader: loader, silicon: this});
                 if (result === false) throw new Error(loader + " loader backend rejected startup");
-                this._setStage(70, loader + " runtime initialized");
-                this._setStage(85, "Loading project metadata");
-                this._setStage(95, "Starting Silicon runtime");
+                this.loaderState = "running";
+                this.loaderPhase = "ready";
+                this.loaderBootFinishedAt = Date.now();
                 this._setStage(100, loader + " loaded successfully");
                 this.loading = false;
                 this.loaded = true;
@@ -403,6 +433,9 @@
             if (c.showLoader) lines.push("Loader: " + this.loader);
             if (c.showStatus) lines.push(String(this.loadingStatus));
             if (c.showProgress) lines.push("[" + bar + "] " + Math.round(this.progress) + "%");
+            lines.push("Phase: " + this.loaderPhase);
+            if (this.loaderModule) lines.push("Module: " + this.loaderModule);
+            lines.push("State: " + this.loaderState);
             if (this.error && c.showError) lines.push("ERROR: " + this.error);
             const lineNumber = Math.floor(Number(args && args.LINE));
             if (Number.isFinite(lineNumber) && lineNumber >= 1) {
