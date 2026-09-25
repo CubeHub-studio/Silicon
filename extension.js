@@ -133,7 +133,7 @@
                 menus: {
                     loaders: { acceptReporters: true, items: ["Fabric", "NeoVirus"] },
                     screenModes: { acceptReporters: true, items: ["Stage", "Custom", "Off"] },
-                    loadingLines: { acceptReporters: true, items: ["1", "2", "3", "4", "5", "6", "7", "8", "9"] }
+                    loadingLines: { acceptReporters: true, items: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] }
                 }
             };
         }
