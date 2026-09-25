@@ -38,6 +38,8 @@
             this.loaderConfig = {};
             this.events = [];
             this.lastEventText = "";
+            this.eventSerial = 0;
+            this.eventHatSerial = 0;
             this.bootToken = 0;
             this.startedAt = 0;
             this.loaderPhase = "idle";
@@ -127,11 +129,13 @@
                     { opcode: "runtimeState", blockType: Scratch.BlockType.REPORTER, text: "runtime state" },
                     { opcode: "runtimeUptime", blockType: Scratch.BlockType.REPORTER, text: "runtime uptime" },
                     { opcode: "lastEvent", blockType: Scratch.BlockType.REPORTER, text: "last event" },
-                    { opcode: "fireEvent", blockType: Scratch.BlockType.COMMAND, text: "fire event [EVENT]", arguments: { EVENT: { type: Scratch.ArgumentType.STRING, defaultValue: "ready" } } },
+                    { opcode: "whenEventReceived", blockType: Scratch.BlockType.HAT, text: "when event received [EVENT]", isEdgeActivated: true, arguments: { EVENT: { type: Scratch.ArgumentType.STRING, menu: "events", defaultValue: "Example" } } },
+                    { opcode: "fireEvent", blockType: Scratch.BlockType.COMMAND, text: "fire event [EVENT]", arguments: { EVENT: { type: Scratch.ArgumentType.STRING, menu: "events", defaultValue: "Example" } } },
                     { opcode: "resetSilicon", blockType: Scratch.BlockType.COMMAND, text: "reset Silicon" }
                 ],
                 menus: {
                     loaders: { acceptReporters: true, items: ["Fabric", "NeoVirus"] },
+                    events: { acceptReporters: true, items: ["Example", "ready", "unloaded"] },
                     screenModes: { acceptReporters: true, items: ["Stage", "Custom", "Off"] },
                     loadingLines: { acceptReporters: true, items: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] }
                 }
@@ -561,9 +565,16 @@
 
         lastEvent() { return this.lastEventText; }
 
+        whenEventReceived(args) {
+            const eventName = String(args && args.EVENT || "Example");
+            return this.lastEventText === eventName && this.eventSerial > this.eventHatSerial;
+        }
+
         fireEvent(args) {
-            const eventName = String(args.EVENT || "");
+            const eventName = String(args.EVENT || "Example");
             this.lastEventText = eventName;
+            this.eventSerial++;
+            this.eventHatSerial = this.eventSerial - 1;
             this._log("Event: " + eventName);
         }
 
@@ -588,6 +599,8 @@
             this.loaderConfig = {};
             this.events = [];
             this.lastEventText = "";
+            this.eventSerial = 0;
+            this.eventHatSerial = 0;
             this.startedAt = 0;
         }
     }
