@@ -73,6 +73,75 @@
             }
         }
 
+        async _loadNeoVirusModules(baseUrl, backend) {
+            if (!backend || typeof backend.boot !== "function") {
+                throw new Error("NeoVirus backend is not ready for module loading.");
+            }
+
+            const fetcher =
+                typeof Scratch.fetch === "function"
+                    ? Scratch.fetch.bind(Scratch)
+                    : (typeof globalThis !== "undefined" && typeof globalThis.fetch === "function")
+                        ? globalThis.fetch.bind(globalThis)
+                        : null;
+
+            if (!fetcher) {
+                throw new Error("Silicon cannot fetch NeoVirus modules.");
+            }
+
+            const manifestUrl = new URL("modules/manifest.json", baseUrl).href;
+            this._setStage(10, "Reading NeoVirus module manifest");
+
+            const manifestResponse = await fetcher(manifestUrl);
+            if (!manifestResponse || !manifestResponse.ok) {
+                throw new Error("NeoVirus module manifest could not be loaded: HTTP " +
+                    (manifestResponse ? manifestResponse.status : "request failed"));
+            }
+
+            const manifest = await manifestResponse.json();
+
+            if (!manifest || !Array.isArray(manifest.modules)) {
+                throw new Error("NeoVirus module manifest is invalid.");
+            }
+
+            this._setStage(13, "Discovering " + manifest.modules.length + " NeoVirus modules");
+
+            const loaded = [];
+            for (const entry of manifest.modules) {
+                if (!entry || !entry.url) {
+                    throw new Error("NeoVirus manifest contains an invalid module entry.");
+                }
+
+                const moduleUrl = new URL(entry.url, manifestUrl).href;
+                const response = await fetcher(moduleUrl);
+
+                if (!response || !response.ok) {
+                    throw new Error("NeoVirus module failed to download: " + moduleUrl);
+                }
+
+                const source = await response.text();
+                if (!source.trim()) {
+                    throw new Error("NeoVirus module returned empty source: " + moduleUrl);
+                }
+
+                this._setStage(
+                    15,
+                    "Loading NeoVirus module: " + String(entry.id || moduleUrl)
+                );
+
+                new Function(
+                    source + "\n//# sourceURL=" + moduleUrl
+                )();
+
+                loaded.push(String(entry.id || moduleUrl));
+            }
+
+            this._setStage(18, "NeoVirus modules discovered: " + loaded.length);
+            this._log("NeoVirus modules loaded: " + loaded.join(", "));
+
+            return loaded;
+        }
+
         _isLoaderInstalled(loader) {
             const key = String(loader || "").trim().toLowerCase();
             return !!(key && this.loaderInstalls[key] && this.loaderInstalls[key].source);
@@ -420,6 +489,19 @@
             if (!backend || typeof backend.boot !== "function") {
                 this._fail(loader + " backend is invalid: boot() is missing.");
                 return;
+            }
+
+            if (backendKey === "neovirus") {
+                try {
+                    await this._loadNeoVirusModules(
+                        backendUrls.neovirus,
+                        backend
+                    );
+                } catch (e) {
+                    this._fail("NeoVirus modules could not be loaded: " +
+                        (e && e.message ? e.message : String(e)));
+                    return;
+                }
             }
 
             this.loaderPhase = "starting";
