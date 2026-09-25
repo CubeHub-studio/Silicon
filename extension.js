@@ -47,6 +47,109 @@
             this.loaderState = "idle";
             this.loaderBootStartedAt = 0;
             this.loaderBootFinishedAt = 0;
+            this.installStorageKey = "silicon.loader.installs.v1";
+            this.loaderInstalls = this._readLoaderInstalls();
+        }
+
+        _readLoaderInstalls() {
+            try {
+                if (typeof localStorage === "undefined") return {};
+                const raw = localStorage.getItem(this.installStorageKey);
+                if (!raw) return {};
+                const data = JSON.parse(raw);
+                return data && typeof data === "object" ? data : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        _writeLoaderInstalls() {
+            try {
+                if (typeof localStorage === "undefined") return false;
+                localStorage.setItem(this.installStorageKey, JSON.stringify(this.loaderInstalls));
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        _isLoaderInstalled(loader) {
+            const key = String(loader || "").trim().toLowerCase();
+            return !!(key && this.loaderInstalls[key] && this.loaderInstalls[key].source);
+        }
+
+        _deleteLoaderInstall(loader) {
+            const key = String(loader || "").trim().toLowerCase();
+            if (!key) return false;
+            if (!Object.prototype.hasOwnProperty.call(this.loaderInstalls, key)) return false;
+            delete this.loaderInstalls[key];
+            this._writeLoaderInstalls();
+            return true;
+        }
+
+        async _installLoader(loader, url) {
+            const key = String(loader || "").trim().toLowerCase();
+            if (!key || !url) throw new Error("Invalid loader installation request.");
+
+            if (this._isLoaderInstalled(key)) {
+                return this.loaderInstalls[key];
+            }
+
+            const fetcher =
+                typeof Scratch.fetch === "function"
+                    ? Scratch.fetch.bind(Scratch)
+                    : (typeof globalThis !== "undefined" && typeof globalThis.fetch === "function")
+                        ? globalThis.fetch.bind(globalThis)
+                        : null;
+
+            if (!fetcher) {
+                throw new Error("Silicon cannot install " + loader + " because fetch() is unavailable.");
+            }
+
+            this._setStage(2, "Installing " + loader + " for the first boot");
+            const response = await fetcher(url);
+
+            if (!response || !response.ok) {
+                throw new Error("Could not install " + loader + ": HTTP " + (response ? response.status : "request failed"));
+            }
+
+            const source = await response.text();
+            if (!source.trim()) {
+                throw new Error(loader + " installation returned empty loader.js.");
+            }
+
+            this.loaderInstalls[key] = {
+                name: String(loader),
+                version: key === "neovirus" ? "1.1.0" : "unknown",
+                url: String(url),
+                source: source,
+                installedAt: Date.now()
+            };
+
+            if (!this._writeLoaderInstalls()) {
+                delete this.loaderInstalls[key];
+                throw new Error("Could not save the " + loader + " installation.");
+            }
+
+            this._setStage(5, loader + " installed");
+            return this.loaderInstalls[key];
+        }
+
+        isLoaderInstalled(args) {
+            return this._isLoaderInstalled(args && args.LOADER);
+        }
+
+        deleteCurrentLoaderInstall() {
+            const loader = this.loader;
+            if (this.loading) {
+                this._fail("Cannot delete the current loader while Silicon is loading.");
+                return;
+            }
+
+            this._deleteLoaderInstall(loader);
+            this.loaded = false;
+            this._log(loader + " installation deleted");
+            this._setStage(0, loader + " installation deleted");
         }
 
         getInfo() {
@@ -66,6 +169,8 @@
                     { opcode: "getLoader", blockType: Scratch.BlockType.REPORTER, text: "current loader" },
                     { opcode: "loaderSupported", blockType: Scratch.BlockType.BOOLEAN, text: "[LOADER] supported?", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "Fabric" } } },
                     { opcode: "getLoaderVersion", blockType: Scratch.BlockType.REPORTER, text: "Silicon loader version" },
+                    { opcode: "isLoaderInstalled", blockType: Scratch.BlockType.BOOLEAN, text: "[LOADER] installed?", arguments: { LOADER: { type: Scratch.ArgumentType.STRING, menu: "loaders", defaultValue: "NeoVirus" } } },
+                    { opcode: "deleteCurrentLoaderInstall", blockType: Scratch.BlockType.COMMAND, text: "delete current loader install" },
 
                     { blockType: Scratch.BlockType.LABEL, text: "LOADER CONFIGURATION" },
                     { opcode: "setLoaderConfig", blockType: Scratch.BlockType.COMMAND, text: "set loader config [KEY] to [VALUE]", arguments: { KEY: { type: Scratch.ArgumentType.STRING, defaultValue: "environment" }, VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "gandi" } } },
@@ -221,6 +326,38 @@
 
             const backends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
             let backend = backends[loader] || backends[loader.toLowerCase()];
+            const backendKey = loader.toLowerCase();
+            const installed = this.loaderInstalls[backendKey];
+
+            // NeoVirus is installed persistently on the first Silicon boot.
+            // The installation is a cached copy of the real loader.js, not a fake loader.
+            try {
+                if (!this._isLoaderInstalled("neovirus")) {
+                    await this._installLoader(
+                        "NeoVirus",
+                        backendUrls.neovirus
+                    );
+                }
+            } catch (e) {
+                this._fail("NeoVirus first-boot installation failed: " + (e && e.message ? e.message : String(e)));
+                return;
+            }
+
+            if (!backend && installed) {
+                try {
+                    this._setStage(6, "Starting installed " + loader + " backend");
+                    const runInstalledLoader = new Function(
+                        installed.source + "\n//# sourceURL=" + installed.url
+                    );
+                    runInstalledLoader();
+
+                    const installedBackends = (typeof globalThis !== "undefined" && globalThis.SiliconLoaders) || {};
+                    backend = installedBackends[backendKey] || installedBackends[loader];
+                } catch (e) {
+                    this._fail("Installed " + loader + " backend failed to start: " + (e && e.message ? e.message : String(e)));
+                    return;
+                }
+            }
 
             if (!backend) {
                 const url = backendUrls[loader.toLowerCase()];
@@ -250,6 +387,17 @@
                     const source = await response.text();
                     if (!source.trim()) {
                         throw new Error("The backend returned an empty loader.js.");
+                    }
+
+                    this.loaderInstalls[loader.toLowerCase()] = {
+                        name: loader,
+                        version: loader.toLowerCase() === "neovirus" ? "1.1.0" : "unknown",
+                        url: url,
+                        source: source,
+                        installedAt: Date.now()
+                    };
+                    if (!this._writeLoaderInstalls()) {
+                        throw new Error("The " + loader + " backend loaded but could not be saved.");
                     }
 
                     const runLoader = new Function(source + "\n//# sourceURL=" + url);
@@ -601,6 +749,8 @@
             this.eventSerial = 0;
             this.eventHatSerial = 0;
             this.startedAt = 0;
+            this.loaderInstalls = {};
+            this._writeLoaderInstalls();
         }
     }
 
